@@ -1,0 +1,41 @@
+platforms:
+  hn:
+    enabled: true
+    min_points: 2
+    hits_per_query: 30
+  reddit:
+    enabled: true
+    # Set these or use env vars REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET
+    client_id: ""
+    client_secret: ""
+    user_agent: "pain-miner/1.0"
+    default_subreddits:
+      - SaaS
+      - startups
+      - Entrepreneur
+      - webdev
+      - programming
+      - selfhosted
+    sort: "top"
+    time_filter: "month"
+    limit: 100
+
+scoring:
+  engagement_weight: 0.3
+  pain_weight: 0.3
+  demand_weight: 0.25
+  cross_query_weight: 0.15
+  min_score_for_analysis: 5
+
+gemini:
+  # Set this or use env var GEMINI_API_KEY
+  api_key: ""
+  model: "gemini-2.0-flash"
+  max_posts_to_analyze: 50
+
+output:
+  dir: "./output"
+
+search:
+  max_post_age_days: 180
+  query_delay_seconds: 0.3
