@@ -4,6 +4,7 @@ import json
 import re
 import time
 import urllib.request
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 
 PH_GRAPHQL_URL = "https://api.producthunt.com/v2/api/graphql"
@@ -76,6 +77,15 @@ query($postId: ID!, $cursor: String) {
   }
 }
 """
+
+
+def _clean_url(url):
+    """Strip utm_* tracking parameters from a URL."""
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    cleaned = {k: v for k, v in params.items() if not k.startswith("utm_")}
+    new_query = urlencode(cleaned, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
 
 
 def _graphql_request(query, variables, token, timeout=15):
@@ -200,7 +210,7 @@ def fetch_posts(topic, cfg):
                 all_posts[ph_id] = {
                     "id": f"ph_{ph_id}",
                     "platform": "producthunt",
-                    "url": node.get("url", ""),
+                    "url": _clean_url(node.get("url", "")),
                     "title": node.get("name", ""),
                     "body": (node.get("tagline", "") + "\n" + node.get("description", "")).strip(),
                     "author": "",  # PH redacted maker names
@@ -224,7 +234,23 @@ def fetch_posts(topic, cfg):
 
         time.sleep(delay)
 
-    return list(all_posts.values())
+    posts_list = list(all_posts.values())
+
+    # Enrich high-engagement posts with top comments (pain signals hide in comments)
+    min_comments = ph_cfg.get("min_comments_to_fetch", 10)
+    enriched = 0
+    for post in posts_list:
+        if post["num_comments"] >= min_comments:
+            comment_text = fetch_comments_for_post(post["id"], token)
+            if comment_text:
+                post["body"] += "\n\n--- User Comments ---\n" + comment_text
+                enriched += 1
+            time.sleep(delay)
+
+    if enriched:
+        print(f"  [PH] Enriched {enriched} posts with top comments")
+
+    return posts_list
 
 
 def fetch_comments_for_post(post_id, token, max_comments=10):

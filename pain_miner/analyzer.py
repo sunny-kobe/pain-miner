@@ -32,9 +32,9 @@ Posts data:
 def analyze_posts(posts, topic, cfg):
     """Run Gemini analysis on a list of posts. Returns list of pain points."""
     try:
-        import google.generativeai as genai
+        from google import genai
     except ImportError:
-        print("  [Gemini] google-generativeai not installed. Run: pip install google-generativeai")
+        print("  [Gemini] google-genai not installed. Run: pip install google-genai")
         return []
 
     api_key = cfg["gemini"].get("api_key", "")
@@ -42,9 +42,8 @@ def analyze_posts(posts, topic, cfg):
         print("  [Gemini] No API key. Set GEMINI_API_KEY env var.")
         return []
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     model_name = cfg["gemini"].get("model", "gemini-2.0-flash")
-    model = genai.GenerativeModel(model_name)
 
     # Prepare posts data — only send essential fields to save tokens
     posts_data = []
@@ -75,7 +74,7 @@ def analyze_posts(posts, topic, cfg):
         print(f"  [Gemini] Analyzing batch {i // batch_size + 1} ({len(batch)} posts)...")
 
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(model=model_name, contents=prompt)
             text = response.text.strip()
 
             # Strip markdown code fences if present
