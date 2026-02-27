@@ -1,6 +1,8 @@
 """pain-miner CLI — discover user pain points from HN, Reddit, Product Hunt, and X."""
 
 import argparse
+import hashlib
+import json
 import sys
 
 from . import config as config_mod
@@ -177,6 +179,113 @@ def cmd_report(args, cfg):
         print("No report path recorded for latest run.")
 
 
+def cmd_import(args, cfg):
+    """Import posts from a JSON file (e.g. Grok export) into the pipeline."""
+    topic = args.topic
+    platform = args.platform
+    no_analyze = args.no_analyze
+
+    try:
+        with open(args.file, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"Error reading {args.file}: {e}")
+        return
+
+    if not isinstance(raw, list):
+        print("Expected a JSON array of post objects.")
+        return
+
+    print(f"\n{'=' * 60}")
+    print(f"  pain-miner import: {args.file}")
+    print(f"  topic: \"{topic}\" | platform: {platform}")
+    print(f"  {len(raw)} posts in file")
+    print(f"{'=' * 60}\n")
+
+    db.init_db()
+
+    # Normalize posts
+    posts = []
+    for i, item in enumerate(raw):
+        post_id = item.get("id") or item.get("url") or f"import_{i}"
+        # Generate stable ID from URL if available
+        if not item.get("id") and item.get("url"):
+            post_id = f"{platform}_{hashlib.md5(item['url'].encode()).hexdigest()[:12]}"
+
+        posts.append({
+            "id": post_id,
+            "platform": platform,
+            "url": item.get("url", ""),
+            "title": item.get("title", item.get("body", "")[:80]),
+            "body": item.get("body", ""),
+            "author": item.get("author", ""),
+            "community": item.get("community", ""),
+            "points": item.get("points", item.get("likes", 0)),
+            "num_comments": item.get("num_comments", item.get("replies", 0)),
+            "created_at": item.get("created_at", item.get("date", "")),
+            "topic": topic,
+            "matched_queries": ["import"],
+        })
+
+    # Dedup
+    new_posts = [p for p in posts if not db.is_processed(p["id"], p["platform"])]
+    print(f"📊 {len(posts)} total, {len(new_posts)} new (after dedup)\n")
+
+    if not new_posts:
+        print("All posts already processed. Nothing to do.")
+        return
+
+    # Score
+    print("🧮 Scoring posts...")
+    scored = scoring.score_posts(new_posts, cfg, topic=topic)
+
+    min_score = cfg["scoring"].get("min_score_for_analysis", 10)
+    above_threshold = sum(1 for p in scored if p["relevance_score"] >= min_score)
+    print(f"   {above_threshold} posts above analysis threshold ({min_score})\n")
+
+    # Persist
+    db.insert_posts(scored)
+    db.mark_history([p["id"] for p in scored], platform)
+
+    # Analyze
+    pain_points = []
+    analyzed_count = 0
+    if not no_analyze:
+        max_analyze = cfg["gemini"].get("max_posts_to_analyze", 50)
+        to_analyze = [p for p in scored if p["relevance_score"] >= min_score][:max_analyze]
+
+        if to_analyze and cfg["gemini"].get("api_key"):
+            print(f"🤖 Running Gemini analysis on {len(to_analyze)} posts...")
+            pain_points = analyzer.analyze_posts(to_analyze, topic, cfg)
+            analyzed_count = len(to_analyze)
+            db.mark_analyzed(
+                [p["id"] for p in to_analyze],
+                [None] * len(to_analyze)
+            )
+            print(f"   {len(pain_points)} pain points identified\n")
+        elif not cfg["gemini"].get("api_key"):
+            print("⚠️  No GEMINI_API_KEY set. Skipping analysis.\n")
+
+    # Report
+    print("📝 Generating report...")
+    report_path = reporter.generate_report(
+        topic=topic,
+        posts=scored,
+        pain_points=pain_points,
+        run_meta={"platforms": [platform], "analyzed_count": analyzed_count},
+        cfg=cfg,
+    )
+    print(f"   Saved to: {report_path}\n")
+
+    db.save_run(topic, platform, len(scored), analyzed_count, report_path)
+
+    print(f"{'=' * 60}")
+    print(f"  Done! {len(scored)} posts imported, {analyzed_count} analyzed")
+    print(f"  {len(pain_points)} pain points found")
+    print(f"  Report: {report_path}")
+    print(f"{'=' * 60}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="pain-miner",
@@ -201,6 +310,13 @@ def main():
     p_report = sub.add_parser("report", help="Show latest report")
     p_report.add_argument("--topic", default=None, help="Filter by topic")
 
+    # import
+    p_import = sub.add_parser("import", help="Import posts from JSON file (e.g. Grok export)")
+    p_import.add_argument("file", help="Path to JSON file with posts array")
+    p_import.add_argument("--topic", required=True, help="Topic for scoring and analysis")
+    p_import.add_argument("--platform", default="x", help="Platform label (default: x)")
+    p_import.add_argument("--no-analyze", action="store_true", help="Skip Gemini analysis")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -214,6 +330,8 @@ def main():
         cmd_analyze(args, cfg)
     elif args.command == "report":
         cmd_report(args, cfg)
+    elif args.command == "import":
+        cmd_import(args, cfg)
 
 
 if __name__ == "__main__":
