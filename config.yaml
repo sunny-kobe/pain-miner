@@ -20,6 +20,19 @@ platforms:
     time_filter: "month"
     limit: 100
 
+  producthunt:
+    enabled: true
+    # Set this or use env var PRODUCTHUNT_TOKEN
+    developer_token: ""
+    max_pages_per_topic: 3
+
+  twitter:
+    enabled: true
+    # Set this or use env var X_BEARER_TOKEN
+    # Requires Basic ($200/mo) or pay-per-use tier — free tier has no search
+    bearer_token: ""
+    max_results_per_query: 50
+
 scoring:
   engagement_weight: 0.3
   pain_weight: 0.3

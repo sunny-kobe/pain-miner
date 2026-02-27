@@ -40,6 +40,8 @@ def load_config(config_path=None):
     cfg.setdefault("platforms", {})
     cfg["platforms"].setdefault("hn", {"enabled": True, "min_points": 2, "hits_per_query": 30})
     cfg["platforms"].setdefault("reddit", {})
+    cfg["platforms"].setdefault("producthunt", {})
+    cfg["platforms"].setdefault("twitter", {})
     cfg.setdefault("scoring", {})
     cfg.setdefault("gemini", {})
     cfg.setdefault("output", {"dir": "./output"})
@@ -54,6 +56,16 @@ def load_config(config_path=None):
     r.setdefault("sort", "top")
     r.setdefault("time_filter", "month")
     r.setdefault("limit", 100)
+
+    ph = cfg["platforms"]["producthunt"]
+    ph["developer_token"] = os.environ.get("PRODUCTHUNT_TOKEN", ph.get("developer_token", ""))
+    ph.setdefault("enabled", True)
+    ph.setdefault("max_pages_per_topic", 3)
+
+    tw = cfg["platforms"]["twitter"]
+    tw["bearer_token"] = os.environ.get("X_BEARER_TOKEN", tw.get("bearer_token", ""))
+    tw.setdefault("enabled", True)
+    tw.setdefault("max_results_per_query", 50)
 
     g = cfg["gemini"]
     g["api_key"] = os.environ.get("GEMINI_API_KEY", g.get("api_key", ""))

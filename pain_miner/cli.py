@@ -1,4 +1,4 @@
-"""pain-miner CLI — discover user pain points from HN and Reddit."""
+"""pain-miner CLI — discover user pain points from HN, Reddit, Product Hunt, and X."""
 
 import argparse
 import sys
@@ -9,6 +9,8 @@ from . import scoring
 from . import analyzer
 from . import reporter
 from .sources import hn, reddit
+from .sources import producthunt as ph
+from .sources import twitter as x
 
 
 def cmd_search(args, cfg):
@@ -44,6 +46,18 @@ def cmd_search(args, cfg):
         posts = reddit.fetch_posts(topic, cfg, subreddits=subreddits)
         print(f"   {len(posts)} unique posts\n")
         all_posts.extend(posts)
+
+    if "producthunt" in platforms and cfg["platforms"].get("producthunt", {}).get("enabled", True):
+        print("📡 Fetching Product Hunt posts...")
+        ph_posts = ph.fetch_posts(topic, cfg)
+        print(f"   {len(ph_posts)} unique posts\n")
+        all_posts.extend(ph_posts)
+
+    if "twitter" in platforms and cfg["platforms"].get("twitter", {}).get("enabled", True):
+        print("📡 Fetching X/Twitter posts...")
+        tweets = x.fetch_tweets(topic, cfg)
+        print(f"   {len(tweets)} unique tweets\n")
+        all_posts.extend(tweets)
 
     if not all_posts:
         print("No posts found. Check your query or platform config.")
@@ -175,7 +189,7 @@ def main():
     # search
     p_search = sub.add_parser("search", help="Search platforms for pain points")
     p_search.add_argument("topic", help='Topic to search (e.g. "AI video tools")')
-    p_search.add_argument("--platforms", default="hn,reddit", help="Comma-separated: hn,reddit")
+    p_search.add_argument("--platforms", default="hn,producthunt", help="Comma-separated: hn,reddit,producthunt,twitter")
     p_search.add_argument("--subreddits", default=None, help="Override default subreddits")
     p_search.add_argument("--no-analyze", action="store_true", help="Skip Gemini analysis")
 

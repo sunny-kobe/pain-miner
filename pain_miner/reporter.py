@@ -19,6 +19,8 @@ def generate_report(topic, posts, pain_points, run_meta, cfg):
     analyzed_posts = run_meta.get("analyzed_count", sum(1 for p in posts if p.get("analyzed")))
     hn_posts = sum(1 for p in posts if p.get("platform") == "hn")
     reddit_posts = sum(1 for p in posts if p.get("platform") == "reddit")
+    ph_posts = sum(1 for p in posts if p.get("platform") == "producthunt")
+    x_posts = sum(1 for p in posts if p.get("platform") == "twitter")
 
     lines = []
     lines.append(f"# Pain Point Research: {topic}")
@@ -31,6 +33,10 @@ def generate_report(topic, posts, pain_points, run_meta, cfg):
     lines.append(f"| Total posts collected | {total_posts} |")
     lines.append(f"| HN posts | {hn_posts} |")
     lines.append(f"| Reddit posts | {reddit_posts} |")
+    if ph_posts:
+        lines.append(f"| Product Hunt posts | {ph_posts} |")
+    if x_posts:
+        lines.append(f"| X/Twitter posts | {x_posts} |")
     lines.append(f"| Posts sent to Gemini | {analyzed_posts} |")
     lines.append(f"| Pain points identified | {len(pain_points)} |")
     lines.append(f"| Data source level | **Primary** — all from original posts with URLs |")
