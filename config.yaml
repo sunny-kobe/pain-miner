@@ -5,9 +5,6 @@ platforms:
     hits_per_query: 30
   reddit:
     enabled: true
-    # Set these or use env vars REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET
-    client_id: ""
-    client_secret: ""
     user_agent: "pain-miner/1.0"
     default_subreddits:
       - SaaS
@@ -19,6 +16,7 @@ platforms:
     sort: "top"
     time_filter: "month"
     limit: 100
+    comment_threshold: 10
 
   producthunt:
     enabled: true

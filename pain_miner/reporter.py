@@ -39,6 +39,9 @@ def generate_report(topic, posts, pain_points, run_meta, cfg):
         lines.append(f"| X/Twitter posts | {x_posts} |")
     lines.append(f"| Posts sent to Gemini | {analyzed_posts} |")
     lines.append(f"| Pain points identified | {len(pain_points)} |")
+    cross_platform_count = sum(1 for pp in pain_points if pp.get("platform_count", 1) >= 2)
+    if cross_platform_count:
+        lines.append(f"| Cross-platform pain points | {cross_platform_count} |")
     lines.append(f"| Data source level | **Primary** — all from original posts with URLs |")
     lines.append("")
 
@@ -102,6 +105,15 @@ def _format_pain_point(lines, index, pp):
     lines.append(f"- **Emotional intensity**: {pp.get('emotional_intensity', '?')}/5")
     lines.append(f"- **Unique users**: {pp.get('unique_users', '?')}")
     lines.append(f"- **Payment signal**: {'Yes' if pp.get('payment_signal') else 'No'}")
+
+    # Cross-platform signal
+    signal = pp.get("cross_platform_signal", "single")
+    platforms = pp.get("platforms", [])
+    if signal == "strong":
+        lines.append(f"- **Cross-platform**: 🔥 Strong ({', '.join(platforms)})")
+    elif signal == "moderate":
+        lines.append(f"- **Cross-platform**: ⚡ Moderate ({', '.join(platforms)})")
+
     if pp.get("payment_quote"):
         lines.append(f'  - > "{pp["payment_quote"]}"')
     if pp.get("current_workaround"):

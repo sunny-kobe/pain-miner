@@ -47,15 +47,13 @@ def load_config(config_path=None):
     cfg.setdefault("output", {"dir": "./output"})
     cfg.setdefault("search", {})
 
-    # Env var overrides for secrets
     r = cfg["platforms"]["reddit"]
-    r["client_id"] = os.environ.get("REDDIT_CLIENT_ID", r.get("client_id", ""))
-    r["client_secret"] = os.environ.get("REDDIT_CLIENT_SECRET", r.get("client_secret", ""))
     r.setdefault("user_agent", "pain-miner/1.0")
     r.setdefault("default_subreddits", ["SaaS", "startups", "Entrepreneur"])
     r.setdefault("sort", "top")
     r.setdefault("time_filter", "month")
     r.setdefault("limit", 100)
+    r.setdefault("comment_threshold", 10)
 
     ph = cfg["platforms"]["producthunt"]
     ph["developer_token"] = os.environ.get("PRODUCTHUNT_TOKEN", ph.get("developer_token", ""))
