@@ -2,7 +2,15 @@
 
 **Find what to build next.** Mine real user frustrations from Hacker News, Reddit, and Product Hunt — before your competitors do.
 
+**找到下一个值得做的产品。** 从 HN、Reddit、Product Hunt 挖掘真实用户痛点 —— 在竞争对手之前。
+
+[English](#features) | [中文](#功能特性)
+
+---
+
 pain-miner scans thousands of community discussions to surface genuine pain points, unmet needs, and product opportunities. No surveys, no guessing — just real people complaining about real problems.
+
+pain-miner 扫描数千条社区讨论，挖掘真实痛点、未满足需求和产品机会。不靠问卷，不靠猜测 —— 只看真人在真实场景下的抱怨。
 
 ```
 $ python -m pain_miner search "API testing" --platforms hn,reddit,producthunt
@@ -155,6 +163,67 @@ PRODUCTHUNT_TOKEN=your_ph_token       # Optional, for Product Hunt
 - **Product managers** — Discover feature gaps and competitive opportunities
 - **Founders** — Validate problem-solution fit before writing code
 - **Developers** — Find open-source project ideas with real demand
+
+---
+
+# 中文文档
+
+## 为什么用 pain-miner？
+
+| 传统做法 | pain-miner |
+|---|---|
+| 手动翻阅几百个帖子 | 自动搜索 4 个平台 |
+| 凭直觉判断哪些是痛点 | 规则评分 + LLM 智能分析 |
+| 只看一个平台，容易偏颇 | 跨平台信号检测 |
+| 无法验证痛点是否普遍 | 每个痛点附带原始链接 |
+| 几小时的调研 | 几分钟出结果 |
+
+## 功能特性
+
+- **多平台搜索** — Hacker News（Algolia API）、Reddit（.json 端点，无需 API key）、Product Hunt（GraphQL）、X/Twitter（通过 Grok 导入）
+- **智能评分** — 痛点关键词检测、需求信号、互动指标、主题相关性过滤
+- **跨平台信号检测** — 在多个平台重复出现的痛点会被标记并优先排序
+- **Jaccard 智能去重** — 跨批次合并相似痛点，保留所有来源链接和引用
+- **Gemini 深度分析** — 可选的 AI 分析，提取结构化痛点（情绪强度、付费意愿、现有替代方案）
+- **置信度分级报告** — Markdown 输出，按 High/Medium/Low 分级，附跨平台标记和原始讨论链接
+
+## 快速开始
+
+```bash
+git clone https://github.com/sunny-kobe/pain-miner.git
+cd pain-miner
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+
+搜索 HN + Reddit **不需要任何 API key**。如需 AI 分析，添加 Gemini key：
+
+```bash
+echo "GEMINI_API_KEY=你的key" > .env
+```
+
+## 使用方法
+
+```bash
+# 搜索 HN + Reddit（无需 API key）
+python -m pain_miner search "开发者工具" --platforms hn,reddit
+
+# 全平台搜索 + Gemini 分析
+python -m pain_miner search "CI/CD" --platforms hn,reddit,producthunt
+
+# 快速扫描，不用 LLM（仅规则评分）
+python -m pain_miner search "API testing" --platforms hn,reddit --no-analyze
+
+# 导入通过 Grok 收集的 X/Twitter 数据
+python -m pain_miner import x_posts.json --topic "API testing"
+```
+
+## 适用人群
+
+- **独立开发者** — 找到有真实用户抱怨支撑的产品创意
+- **产品经理** — 发现功能缺口和竞争机会
+- **创业者** — 在写代码之前验证问题是否真实存在
+- **开发者** — 找到有真实需求的开源项目方向
 
 ## License
 
