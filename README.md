@@ -1,78 +1,160 @@
 # pain-miner
 
-Discover user pain points and unmet needs from Hacker News and Reddit.
+**Find what to build next.** Mine real user frustrations from Hacker News, Reddit, and Product Hunt — before your competitors do.
 
-pain-miner is a CLI tool that searches community discussions for posts expressing frustration, feature requests, or unmet needs around specific topics. It combines rule-based scoring with optional LLM analysis (Gemini) to surface actionable product opportunities.
+pain-miner scans thousands of community discussions to surface genuine pain points, unmet needs, and product opportunities. No surveys, no guessing — just real people complaining about real problems.
+
+```
+$ python -m pain_miner search "API testing" --platforms hn,reddit,producthunt
+
+📡 Fetching HN comments...     311 unique comments
+📡 Fetching HN stories...      106 unique stories
+📡 Fetching Reddit posts...      3 unique posts
+📡 Fetching Product Hunt...     19 unique posts
+🧮 Scoring posts...             14 above threshold
+🤖 Running Gemini analysis...    5 pain points found
+
+Report: output/2026-03-02-api-testing.md
+```
+
+## Why pain-miner?
+
+| Traditional approach | pain-miner |
+|---|---|
+| Read hundreds of threads manually | Searches 4 platforms in parallel |
+| Gut feeling about what's painful | Rule-based scoring + LLM analysis |
+| Single-source bias | Cross-platform signal detection |
+| No way to verify patterns | Every pain point links to source URLs |
+| Hours of research | Minutes to actionable insights |
 
 ## Features
 
-- **HN Algolia API** — Search Hacker News comments and stories
-- **Reddit (PRAW)** — Search Reddit posts and comments across subreddits
-- **Rule-based scoring** — Pain words, demand signals, engagement metrics, topic relevance filtering
-- **Gemini analysis** — Optional deep analysis using Google's Gemini 2.0 Flash
-- **SQLite dedup** — Track processed posts across runs, avoid re-analyzing
-- **Markdown reports** — Structured output with confidence-ranked pain points and source URLs
+- **Multi-platform search** — Hacker News (Algolia API), Reddit (.json endpoint, no API key needed), Product Hunt (GraphQL), X/Twitter (via Grok import)
+- **Smart scoring** — Pain word detection, demand signals, engagement metrics, topic relevance filtering
+- **Cross-platform signal detection** — Pain points appearing on multiple platforms are flagged and prioritized
+- **Jaccard deduplication** — Intelligently merges similar pain points across batches, preserving all source URLs and quotes
+- **Gemini-powered analysis** — Optional deep analysis using Google Gemini to extract structured pain points with emotional intensity, payment signals, and workarounds
+- **Confidence-ranked reports** — Markdown output with High/Medium/Low confidence tiers, cross-platform badges, and direct links to original discussions
 
-## Install
+## Quick Start
 
 ```bash
 git clone https://github.com/sunny-kobe/pain-miner.git
 cd pain-miner
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Configuration
-
-Copy and edit the config:
+**Zero API keys needed** for HN + Reddit search. Add a Gemini key for AI-powered analysis:
 
 ```bash
-cp config.yaml config.yaml  # edit as needed
-```
-
-Set API keys via environment variables or `.env` file:
-
-```bash
-# .env
-GEMINI_API_KEY=your_gemini_key
-REDDIT_CLIENT_ID=your_reddit_client_id
-REDDIT_CLIENT_SECRET=your_reddit_client_secret
+echo "GEMINI_API_KEY=your_key_here" > .env
 ```
 
 ## Usage
 
 ```bash
-# Search HN only (no API keys needed)
-python -m pain_miner search "AI video tools" --platforms hn
+# Search HN + Reddit (no API keys needed)
+python -m pain_miner search "developer tools" --platforms hn,reddit
 
-# Search HN + Reddit
-python -m pain_miner search "AI video tools" --platforms hn,reddit
+# Full pipeline: HN + Reddit + Product Hunt + Gemini analysis
+python -m pain_miner search "CI/CD" --platforms hn,reddit,producthunt
 
-# Skip Gemini analysis (rule-based scoring only)
-python -m pain_miner search "AI video tools" --platforms hn --no-analyze
+# Quick scan without LLM analysis (rule-based scoring only)
+python -m pain_miner search "API testing" --platforms hn,reddit --no-analyze
+
+# Import X/Twitter data collected via Grok
+python -m pain_miner import x_posts.json --topic "API testing"
 
 # Re-analyze previously collected posts
-python -m pain_miner analyze --topic "AI video tools"
-
-# View latest report
-python -m pain_miner report --topic "AI video tools"
+python -m pain_miner analyze --topic "API testing"
 ```
 
 ## How It Works
 
-1. **Fetch** — Query HN Algolia API and/or Reddit PRAW with pain-signal search templates
-2. **Dedup** — Skip posts already processed in previous runs (SQLite)
-3. **Score** — Rule-based scoring: pain words + demand signals + topic relevance + engagement
-4. **Analyze** — Send top-scored posts to Gemini for structured pain point extraction
-5. **Report** — Generate Markdown report with confidence-ranked pain points and source URLs
+```
+Search queries (4 pain-signal templates per platform)
+        │
+        ▼
+┌──────────────────────────────────────────┐
+│  Fetch: HN Algolia + Reddit .json + PH  │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│  Dedup: SQLite tracks processed posts    │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│  Score: pain words + demand signals +    │
+│         engagement + topic relevance     │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│  Analyze: Gemini extracts structured     │
+│           pain points from top posts     │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│  Aggregate: Jaccard dedup + cross-       │
+│             platform signal detection    │
+└──────────────┬───────────────────────────┘
+               ▼
+┌──────────────────────────────────────────┐
+│  Report: Markdown with confidence tiers  │
+└──────────────────────────────────────────┘
+```
 
-## Output
+## Sample Output
 
-Reports are saved to `output/` as Markdown files:
+```markdown
+## Search Transparency
+| Metric | Value |
+|--------|-------|
+| Total posts collected | 439 |
+| HN posts | 417 |
+| Reddit posts | 3 |
+| Product Hunt posts | 19 |
+| Cross-platform pain points | 1 |
 
-- **High/Medium/Low Confidence Pain Points** — with category, emotional intensity, payment signals, quotes, source URLs
-- **High-Engagement Discussion Hubs** — most-discussed on-topic threads worth reading manually
+## High Confidence Pain Points
+
+### 1. API testing tools lack Git-based collaboration workflows
+- **Category**: workflow_friction
+- **Emotional intensity**: 4/5
+- **Payment signal**: No
+- **Cross-platform**: ⚡ Moderate (hn, reddit)
+- **Sources**: [link](https://reddit.com/...), [link](https://news.ycombinator.com/...)
+
+### 2. Postman pricing too expensive for early-stage teams
+- **Category**: pricing
+- **Emotional intensity**: 5/5
+- **Payment signal**: Yes — "can't justify $20/month per developer"
+```
+
+## Data Sources
+
+| Source | Auth Required | Status |
+|--------|:---:|:---:|
+| Hacker News | None | ✅ |
+| Reddit | None | ✅ |
+| Product Hunt | API token | ✅ |
+| X/Twitter | Grok (manual) | ✅ via import |
+
+## Configuration
+
+Edit `config.yaml` to customize subreddits, scoring weights, Gemini model, etc. API keys go in `.env`:
+
+```bash
+GEMINI_API_KEY=your_gemini_key        # Required for AI analysis
+PRODUCTHUNT_TOKEN=your_ph_token       # Optional, for Product Hunt
+```
+
+## Use Cases
+
+- **Indie hackers** — Find validated product ideas backed by real user complaints
+- **Product managers** — Discover feature gaps and competitive opportunities
+- **Founders** — Validate problem-solution fit before writing code
+- **Developers** — Find open-source project ideas with real demand
 
 ## License
 
